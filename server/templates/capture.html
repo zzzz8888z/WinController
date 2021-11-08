@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>屏幕监控</title>
+    <script src="/static/lzma.js"></script>
+    <script src="/static/pako.js"></script>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas" style="display: block;" width="1416" height="800"></canvas>
+<script>
+    function _base64ToArray(base64) {
+    const binStr = window.atob(base64);
+    const len = binStr.length;
+    const bytes = new Int8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binStr.charCodeAt(i);
+    }
+    return bytes;
+  }
+  function _arrayBufferToBase64( buffer ) {
+    let binary = '';
+    const bytes = new Uint8Array( buffer );
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode( bytes[ i ] );
+    }
+    return window.btoa(binary);
+}
+
+function unzip(b64Data){
+  const strData   = atob(b64Data);
+  const charData  = strData.split('').map(function(x){return x.charCodeAt(0);});
+  const binData   = new Uint8Array(charData);
+  return pako.inflate(binData);
+}
+</script>
+<script>
+    const my_lzma = new LZMA("/static/lzma_worker.js");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const image = new Image();
+    setInterval(screen,300);
+    function screen() {
+        fetch(window.location.href,{method:"POST"}).then(res=>{
+        res.json().then(res=>{
+             my_lzma.decompress(_base64ToArray(res.data),(result, error)=>{
+                  image.src = "data:image/png;base64,"+_arrayBufferToBase64(result);
+                  image.onload=function(){
+                    ctx.drawImage(image,0,0,image.width,image.height,0,0,canvas.clientWidth,canvas.clientHeight);
+                  }
+             },(percent)=>{
+                 //console.info(percent);
+             });
+        })
+        }).catch(err=>{
+            layer.msg("error.");
+        })
+    }
+</script>
+</body>
+</html>

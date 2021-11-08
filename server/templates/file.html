@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文件管理</title>
+    <link rel="stylesheet" href="/static/layui/css/layui.css"  media="all">
+</head>
+<body>
+ <input type="text" name="path" placeholder="c://" class="layui-input" id="path" value="c://">
+<table class="layui-hide" id="test"></table>
+<script type="text/html" id="barDemo">
+  {% raw %}
+  <a class="{{ !d.file_type?'layui-btn layui-btn-xs layui-btn-primary layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-primary ' }}" lay-event="goin">进入</a>
+  <a class="layui-btn layui-btn-xs layui-btn-container" lay-event="rename">重命名</a>
+  <a class="layui-btn layui-btn-xs layui-btn layui-btn-normal" lay-event="zip">压缩</a>
+  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-black' }}" lay-event="zip">下载</a>
+  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-warm layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-warm' }}"  lay-event="zip">编辑</a>
+  <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+  {% endraw  %}
+</script>
+<script src="/static/layui/layui.all.js" charset="utf-8"></script>
+<script>
+    const table = layui.table
+    const util = layui.util
+    table.render({
+    elem: '#test'
+    ,url:'#'
+    ,method:"post"
+    ,height:"full"
+    ,cellMinWidth: 80
+    ,toolbar: '#toolbarDemo'
+    ,cols: [[
+      {type:'numbers'}
+      ,{field:'filename', title:'文件名', width:200}
+      ,{field:'file_type', title:'文件类型', width:90, templet:(d)=>{return d.file_type?"<span style='background-color: #C2BE9E'>文件夹</span>":"<span>文件</span>"}}
+      ,{field:'mtime', title:'修改时间', width:180,templet:(d)=>{return util.toDateString(d.mtime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'ctime', title:'创建时间', width:180,templet:(d)=>{return util.toDateString(d.ctime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'atime', title:'访问时间', width:180,templet:(d)=>{return util.toDateString(d.atime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'file_abspath', title:'全路径'}
+      ,{field:'file_size', title:'文件大小', width:100,templet:(d)=>{return Math.floor(d.file_size/1024,2)+"KB"}}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:340}
+    ]]
+    ,where:{
+        dir : "c://"
+    }
+  });
+
+
+</script>
+</body>
+</html>
