@@ -13,7 +13,7 @@
     </style>
 </head>
 <body>
-<canvas id="canvas" style="display: block;" width="1416" height="800"></canvas>
+<canvas id="canvas" style="display: block;" width="1600" height="900"></canvas>
 <script>
     function _base64ToArray(base64) {
     const binStr = window.atob(base64);
@@ -46,7 +46,7 @@ function unzip(b64Data){
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const image = new Image();
-    setInterval(screen,300);
+    setInterval(screen,{{ speed*1000 }});
     function screen() {
         fetch(window.location.href,{method:"POST"}).then(res=>{
         res.json().then(res=>{

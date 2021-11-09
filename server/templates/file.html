@@ -7,7 +7,7 @@
 </head>
 <body>
  <input type="text" name="path" placeholder="c://" class="layui-input" id="path" value="c://">
-<table class="layui-hide" id="test"></table>
+<table class="layui-hide" id="file_table" lay-filter="file"></table>
 <script type="text/html" id="barDemo">
   {% raw %}
   <a class="{{ !d.file_type?'layui-btn layui-btn-xs layui-btn-primary layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-primary ' }}" lay-event="goin">进入</a>
@@ -23,7 +23,7 @@
     const table = layui.table
     const util = layui.util
     table.render({
-    elem: '#test'
+    elem: '#file_table'
     ,url:'#'
     ,method:"post"
     ,height:"full"
@@ -33,19 +33,47 @@
       {type:'numbers'}
       ,{field:'filename', title:'文件名', width:200}
       ,{field:'file_type', title:'文件类型', width:90, templet:(d)=>{return d.file_type?"<span style='background-color: #C2BE9E'>文件夹</span>":"<span>文件</span>"}}
-      ,{field:'mtime', title:'修改时间', width:180,templet:(d)=>{return util.toDateString(d.mtime, "yyyy-MM-dd HH:mm:ss")}}
-      ,{field:'ctime', title:'创建时间', width:180,templet:(d)=>{return util.toDateString(d.ctime, "yyyy-MM-dd HH:mm:ss")}}
-      ,{field:'atime', title:'访问时间', width:180,templet:(d)=>{return util.toDateString(d.atime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'mtime', title:'修改时间', width:160,templet:(d)=>{return util.toDateString(d.mtime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'ctime', title:'创建时间', width:160,templet:(d)=>{return util.toDateString(d.ctime, "yyyy-MM-dd HH:mm:ss")}}
+      ,{field:'atime', title:'访问时间', width:160,templet:(d)=>{return util.toDateString(d.atime, "yyyy-MM-dd HH:mm:ss")}}
       ,{field:'file_abspath', title:'全路径'}
-      ,{field:'file_size', title:'文件大小', width:100,templet:(d)=>{return Math.floor(d.file_size/1024,2)+"KB"}}
-      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:340}
+      ,{field:'file_size', title:'文件大小', width:100,templet:(d)=>{return (d.file_size/1024/1024).toFixed(2)+"MB"}}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:320}
     ]]
     ,where:{
-        dir : "c://"
+        dir : document.getElementById("path").value
     }
+    ,id: 'file_table'
   });
 
 
+    table.on('tool(file)', function(obj){
+        const data = obj.data;
+        if(obj.event === 'del'){
+            layer.confirm('真的删除行么', function(index){
+            obj.del();
+            layer.close(index);
+          });
+        }else if(obj.event === 'goin'){
+            document.getElementById("path").value = data.file_abspath
+            table.reload('file_table',{
+                where:{
+                    dir : data.file_abspath
+                }
+            })
+        }else if(obj.event === 'rename'){
+            layer.prompt({title:"输入新的名字："},(val, index)=>{
+                data["rename"] = val
+                console.info(data)
+            })
+        }else if(obj.event === 'zip'){
+            console.info(data)
+        }else if(obj.event === 'download'){
+            console.info(data)
+        }else if(obj.event === 'edit'){
+            console.info(data)
+        }
+    })
 </script>
 </body>
 </html>
