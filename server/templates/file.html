@@ -6,22 +6,32 @@
     <link rel="stylesheet" href="/static/layui/css/layui.css"  media="all">
 </head>
 <body>
- <input type="text" name="path" placeholder="c://" class="layui-input" id="path" value="c://">
+<div class="layui-container" style="display: flex;margin: 10px 0 0 0">
+     <input type="text" name="path" placeholder="c:/" class="layui-input" id="path" value="c:/" style="width: 40%">
+     <button type="button" 	class="layui-btn layui-btn-primary layui-border-green" onclick="table_reload(path.value)" style="margin-left: 10px">进入</button>
+     <button type="button" class="layui-btn layui-btn-primary layui-border-blue" onclick="table_reload(last_path)">返回上层</button>
+     <button type="button" class="layui-btn layui-btn-primary layui-border-red" id="test3"><i class="layui-icon"></i>上传文件</button>
+</div>
 <table class="layui-hide" id="file_table" lay-filter="file"></table>
 <script type="text/html" id="barDemo">
   {% raw %}
   <a class="{{ !d.file_type?'layui-btn layui-btn-xs layui-btn-primary layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-primary ' }}" lay-event="goin">进入</a>
   <a class="layui-btn layui-btn-xs layui-btn-container" lay-event="rename">重命名</a>
   <a class="layui-btn layui-btn-xs layui-btn layui-btn-normal" lay-event="zip">压缩</a>
-  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-black' }}" lay-event="zip">下载</a>
-  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-warm layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-warm' }}"  lay-event="zip">编辑</a>
+  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-black' }}" lay-event="download">下载</a>
+  <a class="{{ d.file_type?'layui-btn layui-btn-xs layui-btn-warm layui-btn-disabled':'layui-btn layui-btn-xs layui-btn-warm' }}"  lay-event="edit">编辑</a>
   <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
   {% endraw  %}
 </script>
 <script src="/static/layui/layui.all.js" charset="utf-8"></script>
+
 <script>
     const table = layui.table
-    const util = layui.util
+    const util = layui.util;
+    const upload = layui.upload;
+    const layedit = layui.layedit;
+    const path = document.getElementById('path');
+    let last_path = "";
     table.render({
     elem: '#file_table'
     ,url:'#'
@@ -31,14 +41,14 @@
     ,toolbar: '#toolbarDemo'
     ,cols: [[
       {type:'numbers'}
-      ,{field:'filename', title:'文件名', width:200}
+      ,{field:'filename', title:'文件名', width:210}
       ,{field:'file_type', title:'文件类型', width:90, templet:(d)=>{return d.file_type?"<span style='background-color: #C2BE9E'>文件夹</span>":"<span>文件</span>"}}
       ,{field:'mtime', title:'修改时间', width:160,templet:(d)=>{return util.toDateString(d.mtime, "yyyy-MM-dd HH:mm:ss")}}
       ,{field:'ctime', title:'创建时间', width:160,templet:(d)=>{return util.toDateString(d.ctime, "yyyy-MM-dd HH:mm:ss")}}
-      ,{field:'atime', title:'访问时间', width:160,templet:(d)=>{return util.toDateString(d.atime, "yyyy-MM-dd HH:mm:ss")}}
-      ,{field:'file_abspath', title:'全路径'}
-      ,{field:'file_size', title:'文件大小', width:100,templet:(d)=>{return (d.file_size/1024/1024).toFixed(2)+"MB"}}
-      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:320}
+      ,{field:'atime', title:'访问时间', width:160,templet:(d)=>{return util.toDateString(d.atime, "yyyy-MM-dd HH:mm:ss");}}
+      ,{field:'file_abspath', title:'全路径',templet:(d)=>{last_path=d.last_dirname;path.value=d.dirname;return d.file_abspath}}
+      ,{field:'file_size', title:'文件大小', width:120,templet:(d)=>{return (d.file_size/1024/1024).toFixed(2)+"MB"}}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:340}
     ]]
     ,where:{
         dir : document.getElementById("path").value
@@ -46,6 +56,19 @@
     ,id: 'file_table'
   });
 
+    upload.render({
+    elem: '#test3'
+    ,url: '#'
+    ,accept: 'file'
+    ,before:function (){
+        this.data["action"] = "upload"
+        this.data["src_path"] = path.value
+    }
+    ,done: function(res){
+      layer.msg('上传成功');
+      setTimeout(()=>{table_reload(path.value)},1500)
+    }
+  });
 
     table.on('tool(file)', function(obj){
         const data = obj.data;
@@ -56,24 +79,63 @@
           });
         }else if(obj.event === 'goin'){
             document.getElementById("path").value = data.file_abspath
-            table.reload('file_table',{
-                where:{
-                    dir : data.file_abspath
-                }
-            })
+            table_reload(data.file_abspath);
         }else if(obj.event === 'rename'){
             layer.prompt({title:"输入新的名字："},(val, index)=>{
                 data["rename"] = val
-                console.info(data)
+                data["action"] = "rename"
+                req(data,(result)=>{
+                    layer.msg("success");
+                    setTimeout(()=>{
+                        table_reload(document.getElementById("path").value);
+                    },1500)
+                });
+                layer.close(index);
             })
         }else if(obj.event === 'zip'){
             console.info(data)
         }else if(obj.event === 'download'){
-            console.info(data)
+            data["action"] = "download"
+            req(data, ()=>{
+                layer.msg("task commit")
+            })
         }else if(obj.event === 'edit'){
-            console.info(data)
+            const url = location.href.replace("file", "edit")
+            layer.open({
+                type: 2
+                ,title: "Edit -> ctrl + s to save"
+                ,closeBtn: 1
+                ,anim: 5
+                ,shade: 0
+                ,area: ['85%', '600px']
+                ,moveType: 1 //拖拽模式，0或者1
+                ,content: url+"?path="+data.file_abspath
+            });
+
         }
     })
+    function req(data, callable) {
+        fetch("#",{
+            method:"POST",
+            body: JSON.stringify(data),
+        }).then(r=>{
+            r.json().then(res=>{
+                console.info(res);
+                callable(res);
+            })
+        }).catch(e=>{
+            layer.msg("error")
+        })
+    }
+
+    function table_reload(dir_path) {
+        table.reload('file_table',{
+            where:{
+                dir : dir_path
+            }
+        })
+    }
+
 </script>
 </body>
 </html>

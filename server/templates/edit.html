@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>在线编辑</title>
+    <link rel="stylesheet" href="/static/layui/css/layui.css"  media="all">
+    <style>
+        #editor {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+    }
+    </style>
+</head>
+<body>
+<div id="editor">{{ code|safe }}</div>
+<script src="/static/layui/layui.all.js" charset="utf-8"></script>
+<script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+ <script>
+    const editor = ace.edit("editor");
+    document.getElementById('editor').style.fontSize='18px';
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/javascript");
+    document.addEventListener('keydown', function(e){
+    if (e.keyCode === 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)){
+        e.preventDefault();
+        fetch("#",{
+            method:"post",
+            body: JSON.stringify({data: editor.getValue()})
+        }).then(r=>{
+            r.json().then(res=>{
+                layer.msg("success")
+            })
+        }).catch(e=>{
+            layer.msg("fail")
+        })
+     }
+});
+</script>
+</body>
+</html>
