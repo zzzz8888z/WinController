@@ -107,9 +107,9 @@ def file(uid):
             return jsonify({"code": 0, "data": _data["raw"]})
     elif request.form.get("action") == "upload":
         _file = request.files["file"]
-        _path = os.path.join(request.form.get("src_path"), _file.filename)
+        _path = request.form.get("src_path")
         _file_data = base64.b64encode(_file.read()).decode()
-        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "upload", "data": {"path": _path, "data": _file_data}})
+        _data = cache[uid][0].get_data({"v_uid": "0222", "type": "upload", "data": {"path": _path, "filename": _file.filename, "data": _file_data}})
         return jsonify(_data)
     else:
         data = json.loads(request.data)

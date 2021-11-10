@@ -65,7 +65,7 @@
         this.data["src_path"] = path.value
     }
     ,done: function(res){
-      layer.msg('上传成功');
+      layer.msg(res.raw.msg);
       setTimeout(()=>{table_reload(path.value)},1500)
     }
   });

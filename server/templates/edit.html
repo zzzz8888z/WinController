@@ -31,7 +31,7 @@
             body: JSON.stringify({data: editor.getValue()})
         }).then(r=>{
             r.json().then(res=>{
-                layer.msg("success")
+                layer.msg(res.raw.msg)
             })
         }).catch(e=>{
             layer.msg("fail")
